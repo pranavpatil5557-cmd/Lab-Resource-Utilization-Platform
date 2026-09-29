@@ -1,0 +1,68 @@
+databases:
+  - name: lab-resource-utilization-postgresql
+    plan: free
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: lab-resource-utilization-backend
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: lab-resource-utilization-postgresql
+          property: host
+
+      - key: DB_PORT
+        fromDatabase:
+          name: lab-resource-utilization-postgresql
+          property: port
+
+      - key: DB_NAME
+        fromDatabase:
+          name: lab-resource-utilization-postgresql
+          property: database
+
+      - key: DB_USERNAME
+        fromDatabase:
+          name: lab-resource-utilization-postgresql
+          property: user
+
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: lab-resource-utilization-postgresql
+          property: password
+
+      - key: MAIL_USERNAME
+        sync: false
+
+      - key: MAIL_PASSWORD
+        sync: false
+
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: lab-resource-utilization-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: lab-resource-utilization-frontend
+    runtime: static
+    buildCommand: cd Frontend && npm ci && npm run build
+    staticPublishPath: ./Frontend/dist
+
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: lab-resource-utilization-backend
+          envVarKey: RENDER_EXTERNAL_URL
+
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
